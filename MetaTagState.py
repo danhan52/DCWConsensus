@@ -3,6 +3,7 @@ class MetaTagState():
     def __init__(self):
         self.setTags = {}
 
+    # add a tag to a certain location
     def setTag(self, tag, start, end):
         if tag in self.setTags:
             self.setTags[tag].append((start, end))

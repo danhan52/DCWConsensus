@@ -6,6 +6,7 @@ class TextLine():
         self.words = text.split()
         self.numWords = len(self.words)
 
+    # print out line of text with location
     def __str__(self):
         return str(
             self.text) + " @ ((" + str(self.coords['start']['x']) + ", " + str(
