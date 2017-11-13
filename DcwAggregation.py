@@ -23,32 +23,6 @@ from LineMatcher import LineMatcher
 from MetaTagState import MetaTagState
 from StatefulWord import StatefulWord
 
-verbose = True
-extraVerbose = False
-if verbose:
-    import pprint
-    # from IPython.core.display import display
-    pprinter = pprint.PrettyPrinter(indent=4)
-
-# get_ipython().magic('matplotlib inline')
-
-# ## Globally relevant variables
-
-saveIdentifiedLineDetails = True  # Need to do this to recompute for every codebook
-applyDoubleLineFix = False
-applyDoubleWordFilter = True
-applyDoubleLineFilter = True
-classificationBaseDirectory = '/Users/hughdickinson/Google Drive/classifications'
-consensusBaseDirectory = '/Users/hughdickinson/Google Drive/consensus/testing'
-databaseNamePattern = 'dcwConsensus_{mss_label}'
-aggregatedDataFileNamePattern = 'decoding-the-civil-war-aggregated_{mss_label}.txt'
-# 'decoding-the-civil-war-consensus-linewise.csv'
-aggregatedDataCsvFileNamePattern = 'decoding-the-civil-war-consensus-linewise_{mss_label}.csv'
-# 'decoding-the-civil-war-consensus-subjectwise.csv'
-aggregatedDataSubjectWiseCsvFileNamePattern = 'decoding-the-civil-war-consensus-subjectwise_{mss_label}_withBreaks.csv'
-# 'dataWithLineIDs_subset.pkl'
-identifiedLineFilePathPattern = 'dataWithLineIDs_subset_{mss_label}.pkl'
-liveDate = dateutil.parser.parse("2016-06-20T00:00:00.00Z")
 
 
 def loadSubjectData(subjectDataFileName):
@@ -458,7 +432,7 @@ def aggregateSentences(sentences):
     return statefulAggregatedSentence
 
 
-def processSentences(transcriptionLineDetailsFrame):
+def processSentences(transcriptionLineDetailsFrame, subjectsFrame):
 
     # Several indices over the data were establshed to perform the
     # aggregation. hey are no longer required and a more informative index is
@@ -506,11 +480,15 @@ def processSentences(transcriptionLineDetailsFrame):
 # erroneously repeated.
 
 
-def saveAggregatedData(lineGroupedTranscriptionLineDetails, aggregatedDataCsvFileName, aggregatedDataSubjectWiseCsvFileName):
+def saveAggregatedData(lineGroupedTranscriptionLineDetails, aggregatedDataCsvFileName, aggregatedDataSubjectWiseCsvFileName,
+                      applyDoubleWordFilter, applyDoubleLineFilter, extraVerbose):
 
     aggregatedDataFile = open(aggregatedDataCsvFileName, 'w')
     aggregatedDataSubjectWiseFile = open(
         aggregatedDataSubjectWiseCsvFileName, 'w')
+    # write first row
+    aggregatedDataFile.write("@@".join(["subject_id", "hdl_id", "bestLineIndex", "consensus_text", "y_loc",
+                                       "len_wordlist", "url"]) + "\n")
     # detailedAggregatedDataFile = open(aggregatedDataFileName, 'w')
     currentSubject = -1
     lastConsensusSentenceWords = (0, [])
@@ -570,13 +548,13 @@ def saveAggregatedData(lineGroupedTranscriptionLineDetails, aggregatedDataCsvFil
         # previous.
         lastConsensusSentenceWords = (
             numTranscribedWords, consensusSentenceWords)
-
-        aggregatedDataFile.write('{0}@@{1}@@{2}@@{3}@@{4}@@{5}\n'.format(
+        
+        aggregatedDataFile.write('{0}@@{1}@@{2}@@{3}@@{4}@@{5}@@{6}\n'.format(
             currentSubject,
             row['huntington_id'],
             row['bestLineIndex'],
             '"' + cleanConsensusSentence + '"',
-            #'(' + str(row['y1']) + ', ' + str(row['y2']),
+            '(' + str(row['y1']) + ', ' + str(row['y2']) + ')',
             [len(wordlist) for wordlist in row['words']['words']],
             # row['numLines'],
             row['url']))
@@ -586,380 +564,3 @@ def saveAggregatedData(lineGroupedTranscriptionLineDetails, aggregatedDataCsvFil
     aggregatedDataFile.close()
     aggregatedDataSubjectWiseFile.close()
 
-
-if __name__ == '__main__':
-
-    # Processing multiple classificaton files
-
-    classificationCsvFiles = glob.glob(
-        '{}/*.csv'.format(classificationBaseDirectory))
-
-    # consensusCsvFiles = glob.glob('{}/*.csv'.format(consensusBaseDirectory))
-
-    # consensusMssLabels = set([
-    #     consensusCsvFile.split('/')[-1][len(
-    #         'decoding-the-civil-war-consensus-subjectwise_'):
-    #         -len('_withBreaks_clean.csv')]
-    #     for consensusCsvFile in consensusCsvFiles
-    #     if 'withBreaks' in consensusCsvFile
-    # ])
-    # classificationMssLabels = set([
-    #     classificationCsvFile.split('/')[-1][len('classification_export_'):-4]
-    #     for classificationCsvFile in classificationCsvFiles
-    # ])
-    #
-    # remainingMssLabels = classificationMssLabels - consensusMssLabels
-    #
-    # remainingClassificationCsvFiles = list(
-    #     sorted([
-    #         '{base_dir}/classification_export_{label}.csv'.format(
-    #             base_dir=classificationBaseDirectory, label=mssLabel)
-    #         for mssLabel in remainingMssLabels
-    #     ]))
-
-    # print(*enumerate(remainingClassificationCsvFiles), sep='\n')
-
-    # ledgerIndex = 30
-    for sampleDataFileName in classificationCsvFiles:
-        print('Processing {}...'.format(sampleDataFileName))
-        # mssLabel = remainingClassificationCsvFiles[ledgerIndex].split('/')[-1][len(
-        #     'classification_export_'):-4]
-        mssLabel = sampleDataFileName.split('/')[-1][len(
-            'classification_export_'):-4]
-        # databaseName = databaseNamePattern.format(
-        #     mss_label=mssLabel
-        # )
-        # 'dcwConsensusDoubleLineFix' if applyDoubleLineFix else 'dcwConsensus'
-        # sampleDataFileName = classificationCsvFiles[
-        #     ledgerIndex]  # 'decoding-the-civil-war-classifications-2.csv'
-        aggregatedDataFileName = aggregatedDataFileNamePattern.format(
-            mss_label=mssLabel)  # 'decoding-the-civil-war-aggregated.txt'
-        aggregatedDataCsvFileName = aggregatedDataCsvFileNamePattern.format(
-            mss_label=mssLabel)  # 'decoding-the-civil-war-consensus-linewise.csv'
-        aggregatedDataSubjectWiseCsvFileName = aggregatedDataSubjectWiseCsvFileNamePattern.format(
-            mss_label=mssLabel)  # 'decoding-the-civil-war-consensus-subjectwise.csv'
-        identifiedLineFilePath = identifiedLineFilePathPattern.format(
-            mss_label=mssLabel)  # 'dataWithLineIDs_subset.pkl'
-
-        subjectDataFileName = 'decoding-the-civil-war-subjects-7-24-17.csv'
-
-        subjectsFrame = loadSubjectData(subjectDataFileName)
-
-        telegrams, nTelegramsParsed = loadTelegrams(sampleDataFileName)
-        print('Parsed {} telegrams and stored {}.'.format(
-            nTelegramsParsed, len(telegrams)))
-
-        transcriptionLineStats, transcriptionLineDetailsFrame = processLoadedTelegrams(
-            telegrams)
-
-        transcriptionLineDetailsFrame = groupTranscriptionsLinewise(
-            transcriptionLineDetailsFrame, 40, identifiedLineFilePath, saveIdentifiedLineDetails)
-
-        # This is an intentional no-op
-        transcriptionLineDetailsFrame = doubleLineFix(
-            transcriptionLineDetailsFrame, applyDoubleLineFix=False)
-
-        # The previous step is time consuming so serialize the processed data at
-        # this stage
-        if saveIdentifiedLineDetails:
-            transcriptionLineDetailsFrame.to_pickle(identifiedLineFilePath)
-
-        lineGroupedTranscriptionLineDetails = processSentences(
-            transcriptionLineDetailsFrame)
-        saveAggregatedData(lineGroupedTranscriptionLineDetails,
-                           aggregatedDataCsvFileName, aggregatedDataSubjectWiseCsvFileName)
-
-
-#
-# # ## Plot reliability distributions
-#
-# # In[25]:
-#
-#
-# gc.collect()
-# allWordReliabilities = np.array(
-#     list(
-#         itertools.chain(* [
-#             wordData['wordReliabilities']
-#             for wordData in lineGroupedTranscriptionLineDetails["words"]
-#         ])))
-# mplplot.figure(figsize=(7, 7))
-# mplplot.suptitle('Distribution of word reliabilities', fontsize=15)
-# mplplot.xlabel('Word reliability')
-# mplplot.ylabel('Number of words')
-# allWordReliabilityAxis = mplplot.hist(
-#     allWordReliabilities[allWordReliabilities > 0],
-#     bins=20,
-#     histtype='step',
-#     alpha=0.2,
-#     fill=True,
-#     fc='r',
-#     ec='r',
-#     label=r"$R = N_{\rm con}/N_{\rm trans}$")
-# allWordReliabilityAxis = mplplot.hist(
-#     allWordReliabilities[np.logical_and(allWordReliabilities > -0.3,
-#                                         allWordReliabilities < 0.0)],
-#     bins=20,
-#     histtype='step',
-#     alpha=0.2,
-#     fill=True,
-#     fc='g',
-#     ec='g',
-#     label=r"$N_{\rm trans} < 3,\;R\rightarrow 0$")
-# allWordReliabilityAxis = mplplot.hist(
-#     allWordReliabilities[np.logical_and(allWordReliabilities > -0.6,
-#                                         allWordReliabilities < -0.3)],
-#     bins=20,
-#     histtype='step',
-#     alpha=0.2,
-#     fill=True,
-#     fc='b',
-#     ec='b',
-#     label=r"$N_{\rm trans} < 4 \wedge N_{\rm opt} > 1,\;R\rightarrow 0$")
-# handles, labels = mplplot.gcf().gca().get_legend_handles_labels()
-# mplplot.legend(handles[:], labels[:], loc='upper left')
-# mplplot.show()
-#
-#
-# # In[26]:
-#
-#
-# gc.collect()
-# allWordReliabilities = np.array(
-#     list(
-#         itertools.chain(* [
-#             wordData['wordReliabilities']
-#             for wordData in lineGroupedTranscriptionLineDetails["words"]
-#         ])))
-# mplplot.figure(figsize=(7, 7))
-# mplplot.suptitle(
-#     'Distribution of word non-edge case reliabilities < 1', fontsize=15)
-# mplplot.xlabel('Word reliability')
-# mplplot.ylabel('Number of words')
-# allWordReliabilityAxis = mplplot.hist(
-#     allWordReliabilities[np.logical_and(allWordReliabilities > 0,
-#                                         allWordReliabilities < 1)],
-#     bins=20,
-#     histtype='step',
-#     alpha=0.2,
-#     fill=True,
-#     fc='r',
-#     ec='r',
-#     label=r"$R = N_{\rm con}/N_{\rm trans}$")
-# handles, labels = mplplot.gcf().gca().get_legend_handles_labels()
-# mplplot.legend(handles[:], labels[:], loc='upper left')
-# mplplot.show()
-#
-#
-# # In[27]:
-#
-#
-# gc.collect()
-# allSentenceReliabilities = np.array([
-#     wordData['reliability']
-#     for wordData in lineGroupedTranscriptionLineDetails["words"]
-# ])
-# mplplot.figure(figsize=(7, 7))
-# mplplot.suptitle('Distribution of sentence reliabilities', fontsize=15)
-# mplplot.xlabel('Sentence reliability')
-# mplplot.ylabel('Number of sentences')
-# allSentenceReliabilityAxis = mplplot.hist(
-#     allSentenceReliabilities,
-#     bins=20,
-#     histtype='step',
-#     alpha=0.2,
-#     fill=True,
-#     fc='r',
-#     ec='r')
-#
-#
-# # In[28]:
-#
-#
-# gc.collect()
-# subjectGroupedTranscriptionLineDetails = lineGroupedTranscriptionLineDetails.groupby(level=0).aggregate(
-#     {'words': lambda sentences: np.sum([sentence['reliability'] for sentence in sentences]) / float(len(sentences))})
-# mplplot.figure(figsize=(7, 7))
-# mplplot.suptitle('Distribution of subject reliabilities', fontsize=15)
-# mplplot.xlabel('Subject reliability')
-# mplplot.ylabel('Number of subjects')
-# allSentenceReliabilityAxis = subjectGroupedTranscriptionLineDetails[
-#     'words'].plot.hist(
-#         bins=20, histtype='step', alpha=0.2, fill=True, fc='r', ec='r')
-#
-#
-# # In[29]:
-#
-#
-# from IPython.display import Audio
-# Audio(
-#     filename='/Users/hughdickinson/Downloads/jdk1.8.0_112/demo/applets/JumpingBox/sounds/danger.au',
-#     autoplay=True)
-#
-#
-# # In[30]:
-#
-#
-# gc.collect()
-# retiredSubjectGroupedTranscriptionLineDetails = lineGroupedTranscriptionLineDetails[lineGroupedTranscriptionLineDetails['retired']].groupby(
-#     level=0).aggregate({'words': lambda sentences: np.sum([sentence['reliability'] for sentence in sentences]) / float(len(sentences))})
-# mplplot.figure(figsize=(7, 7))
-# mplplot.suptitle(
-#     'Distribution of subject reliabilities for retired subjects', fontsize=15)
-# mplplot.xlabel('Subject reliability')
-# mplplot.ylabel('Number of subjects')
-# allSentenceReliabilityAxis = retiredSubjectGroupedTranscriptionLineDetails[
-#     'words'].plot.hist(
-#         bins=20, histtype='step', alpha=0.2, fill=True, fc='r', ec='r')
-#
-#
-# # ## Store consensus data in MySQL database
-#
-# # The consensus data for the telegrams are stored in a MySQL database that was created using the following commands:
-# #
-# # ```sql
-# # CREATE DATABASE dcwConsensus;
-# #
-# # USE dcwConsensus;
-# #
-# # CREATE TABLE Subjects (
-# # id INT AUTO_INCREMENT NOT NULL PRIMARY KEY,
-# # zooniverseId INT NOT NULL,
-# # huntingtonId CHAR(20) NOT NULL,
-# # url VARCHAR(500) NOT NULL,
-# # subjectReliability DECIMAL(5,4) NOT NULL DEFAULT 0.0
-# # );
-# #
-# # CREATE TABLE SubjectLines (
-# # id INT AUTO_INCREMENT NOT NULL PRIMARY KEY,
-# # subjectId INT NOT NULL,
-# # bestLineIndex INT NOT NULL,
-# # meanX1 DECIMAL(7,3) NOT NULL,
-# # meanX2 DECIMAL(7,3) NOT NULL,
-# # meanY1 DECIMAL(7,3) NOT NULL,
-# # meanY2 DECIMAL(7,3) NOT NULL,
-# # lineReliability DECIMAL(5,4) NOT NULL DEFAULT 0.0
-# # );
-# #
-# # CREATE TABLE LineWords (
-# # id INT AUTO_INCREMENT NOT NULL PRIMARY KEY,
-# # lineId INT NOT NULL,
-# # wordText VARCHAR(100) CHARACTER SET utf16,
-# # position INT NOT NULL,
-# # rank INT NOT NULL,
-# # transcriptionIndex INT NOT NULL,
-# # spanStart INT NOT NULL,
-# # spanEnd INT NOT NULL,
-# # wordReliability DECIMAL(5,4) NOT NULL DEFAULT 0.0
-# # );
-# #
-# # CREATE TABLE MetaTags (
-# # id INT AUTO_INCREMENT NOT NULL PRIMARY KEY,
-# # bestLineIndex INT NOT NULL,
-# # transcriptionIndex INT NOT NULL,
-# # state ENUM('unclear', 'insertion', 'deletion') NOT NULL,
-# # start INT NOT NULL,
-# # end INT NOT NULL,
-# # UNIQUE KEY(bestLineIndex, transcriptionIndex, state, start)
-# # );
-# # ```
-# sys.path.append('/Library/Python/2.7/site-packages')
-# import mysql.connector
-# #testSubjectData = lineGroupedTranscriptionLineDetails.iloc[0]
-# '''connection = mysql.connector.connect(user=os.environ['DCW_MYSQL_USER'], password=os.environ['DCW_MYSQL_PASS'],
-#                               host=os.environ['DCW_MYSQL_HOST'],
-#                               database=databaseName)'''
-# connection = mysql.connector.connect(
-#     user='root',
-#     password='!Ocus1!Ocus1',
-#     host='localhost',
-#     database=databaseName)
-#
-# cursor = connection.cursor()
-# sentence = ''
-# try:
-#     subjectInsertQuery = (
-#         "INSERT INTO Subjects "
-#         "(zooniverseId, huntingtonId, url, subjectReliability) "
-#         "VALUES (%s, %s, %s, %s)")
-#
-#     lineInsertQuery = (
-#         "INSERT INTO SubjectLines "
-#         "(subjectId, bestLineIndex, meanX1, meanX2, meanY1, meanY2, lineReliability) "
-#         "VALUES (%s, %s, %s, %s, %s, %s, %s)")
-#
-#     wordInsertQuery = (
-#         "INSERT INTO LineWords "
-#         "(lineId, wordText, position, rank, transcriptionIndex, spanStart, spanEnd, wordReliability) "
-#         "VALUES (%s, %s, %s, %s, %s, %s, %s, %s)")
-#
-#     metaTagInsertQuery = (
-#         "INSERT INTO MetaTags "
-#         "(bestLineIndex, transcriptionIndex, state, start, end) "
-#         "VALUES (%s, %s, %s, %s, %s)")
-#
-#     currentSubject = -1
-#     subjectId = None
-#
-#     # Keep a record of the saved metatags
-#     savedMetaData = {}
-#
-#     # Loop over aggregated lines in consensus data
-#     for index, row in lineGroupedTranscriptionLineDetails.iterrows():
-#         if index in subjectGroupedTranscriptionLineDetails.index.values:
-#             if index != currentSubject:
-#                 # If the subject has changed, insert a new subject entry
-#                 subjectData = (int(index), row['huntington_id'], row['url'],
-#                                float(subjectGroupedTranscriptionLineDetails.
-#                                      loc[int(index)]['words']))
-#                 cursor.execute(subjectInsertQuery, subjectData)
-#                 subjectId = cursor.lastrowid
-#                 currentSubject = index
-#         else:
-#             print('Subject index not found for: ', row)
-#         # Insert the aggregated line data
-#         bestLineIndex = int(row['bestLineIndex'])
-#         lineData = (subjectId, int(bestLineIndex), row['x1'], row['x2'],
-#                     row['y1'], row['y2'], row['words']['reliability'])
-#         cursor.execute(lineInsertQuery, lineData)
-#         lineId = cursor.lastrowid
-#
-#         # Loop over word positions in the aggregated line
-#         for wordPosition, wordList in enumerate(row['words']['words']):
-#             # Loop over words at each position
-#             for wordRank, word in enumerate(wordList):
-#                 sentence = word.sentence
-#                 wordTranscriptionIndex = int(
-#                     row['transcriptionIndex'][wordRank])
-#                 wordData = (lineId, word.word[0:99], wordPosition, wordRank,
-#                             int(wordTranscriptionIndex), word.span[0],
-#                             word.span[1], 0.0)
-#                 cursor.execute(wordInsertQuery, wordData)
-#                 wordId = cursor.lastrowid
-#                 # only insert data for each set of metatags once
-#                 if len(word.tagStates) > 0 and (
-#                         wordTranscriptionIndex not in savedMetaData
-#                         or bestLineIndex not in
-#                         savedMetaData[wordTranscriptionIndex]):
-#                     if wordTranscriptionIndex in savedMetaData:
-#                         savedMetaData[wordTranscriptionIndex].append(
-#                             bestLineIndex)
-#                     else:
-#                         savedMetaData.update({
-#                             wordTranscriptionIndex: [bestLineIndex]
-#                         })
-#                     for tag, spans in word.tagStates.items():
-#                         for span in spans:
-#                             metaTagData = (int(bestLineIndex),
-#                                            int(wordTranscriptionIndex), tag,
-#                                            span[0], span[1])
-#                             cursor.execute(metaTagInsertQuery, metaTagData)
-#
-# except mysql.connector.Error as err:
-#     print("Failed INSERT: {0}, {1}".format(sentence, err))
-#
-# connection.commit()
-#
-# cursor.close()
-# connection.close()
-# # In[ ]:
